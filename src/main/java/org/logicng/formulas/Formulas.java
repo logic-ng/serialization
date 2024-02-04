@@ -10,10 +10,9 @@ import static org.logicng.formulas.CType.LE;
 import static org.logicng.formulas.CType.LT;
 
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBComparison;
-import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormula;
-import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormulaList;
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormulaMapping;
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormulaType;
+import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormulas;
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBInternalFormula;
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBInternalPseudoBooleanConstraint;
 import org.logicng.functions.SubNodeFunction;
@@ -24,6 +23,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -116,7 +116,7 @@ public interface Formulas {
      * @throws IOException if there is a problem reading from the stream
      */
     static Formula deserializeFromStream(final FormulaFactory f, final InputStream stream) throws IOException {
-        return deserialize(f, PBFormula.newBuilder().mergeFrom(stream).build());
+        return deserialize(f, PBFormulas.newBuilder().mergeFrom(stream).build());
     }
 
     /**
@@ -137,7 +137,7 @@ public interface Formulas {
      * @throws IOException if there is a problem reading from the stream
      */
     static List<Formula> deserializeListFromStream(final FormulaFactory f, final InputStream stream) throws IOException {
-        return deserialize(f, PBFormulaList.newBuilder().mergeFrom(stream).build());
+        return deserializeList(f, PBFormulas.newBuilder().mergeFrom(stream).build());
     }
 
     /**
@@ -145,12 +145,8 @@ public interface Formulas {
      * @param formula the formula
      * @return the protocol buffer
      */
-    static PBFormula serialize(final Formula formula) {
-        final Pair<Map<Formula, Integer>, Map<Integer, PBInternalFormula>> maps = computeMappings(formula);
-        return PBFormula.newBuilder()
-                .setId(maps.first().get(formula))
-                .setMapping(PBFormulaMapping.newBuilder().putAllMapping(maps.second()).build())
-                .build();
+    static PBFormulas serialize(final Formula formula) {
+        return serialize(Collections.singletonList(formula));
     }
 
     /**
@@ -158,10 +154,10 @@ public interface Formulas {
      * @param formulas the formulas
      * @return the protocol buffer
      */
-    static PBFormulaList serialize(final Collection<Formula> formulas) {
+    static PBFormulas serialize(final Collection<Formula> formulas) {
         final Pair<Map<Formula, Integer>, Map<Integer, PBInternalFormula>> maps = computeMappings(formulas);
         final List<Integer> ids = formulas.stream().map(maps.first()::get).collect(Collectors.toList());
-        return PBFormulaList.newBuilder()
+        return PBFormulas.newBuilder()
                 .addAllId(ids)
                 .setMapping(PBFormulaMapping.newBuilder().putAllMapping(maps.second()).build())
                 .build();
@@ -271,9 +267,8 @@ public interface Formulas {
      * @param bin the protocol buffer
      * @return the formula
      */
-    static Formula deserialize(final FormulaFactory f, final PBFormula bin) {
-        final Map<Integer, Formula> id2formula = deserialize(f, bin.getMapping());
-        return id2formula.get(bin.getId());
+    static Formula deserialize(final FormulaFactory f, final PBFormulas bin) {
+        return deserializeList(f, bin).get(0);
     }
 
     /**
@@ -282,7 +277,7 @@ public interface Formulas {
      * @param bin the protocol buffer
      * @return the list of formulas
      */
-    static List<Formula> deserialize(final FormulaFactory f, final PBFormulaList bin) {
+    static List<Formula> deserializeList(final FormulaFactory f, final PBFormulas bin) {
         final Map<Integer, Formula> id2formula = deserialize(f, bin.getMapping());
         return bin.getIdList().stream().map(id2formula::get).collect(Collectors.toList());
     }
@@ -325,12 +320,16 @@ public interface Formulas {
                 final FType naryType = bin.getType() == PBFormulaType.AND ? FType.AND : FType.OR;
                 return f.naryOperator(naryType, bin.getOperandList().stream().map(id2formula::get).collect(Collectors.toList()));
             case PBC:
-                final int rhs = bin.getPbConstraint().getRhs();
+                final int rhs = (int) bin.getPbConstraint().getRhs();
                 final CType ctype = deserialize(bin.getPbConstraint().getComparator());
                 final List<Literal> lits = bin.getPbConstraint().getLiteralList().stream()
                         .map(it -> it.startsWith(NOT_SYMBOL) ? f.literal(it.substring(1), false) : f.literal(it, true))
                         .collect(Collectors.toList());
-                return f.pbc(ctype, rhs, lits, bin.getPbConstraint().getCoefficientList());
+                final List<Integer> coeffs = new ArrayList<>();
+                for (final long l : bin.getPbConstraint().getCoefficientList()) {
+                    coeffs.add((int) l);
+                }
+                return f.pbc(ctype, rhs, lits, coeffs);
             case PREDICATE:
                 return null;
             default:
