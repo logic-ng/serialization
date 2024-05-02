@@ -10,6 +10,7 @@ import static org.logicng.propositions.Propositions.serialize;
 import org.junit.jupiter.api.Test;
 import org.logicng.formulas.FormulaFactory;
 import org.logicng.io.parsers.ParserException;
+import org.logicng.io.parsers.PseudoBooleanParser;
 
 public class PropositionsTest {
 
@@ -17,7 +18,8 @@ public class PropositionsTest {
 
     @Test
     public void testStandardProposition() throws ParserException {
-        final StandardProposition p = new StandardProposition("description", this.f.parse("a & (b => c + d = 1) <=> ~x"));
+        final PseudoBooleanParser parser = new PseudoBooleanParser(this.f);
+        final StandardProposition p = new StandardProposition("description", parser.parse("a & (b => c + d = 1) <=> ~x"));
         assertThat(deserialize(this.f, serialize(p))).isEqualTo(p);
     }
 }

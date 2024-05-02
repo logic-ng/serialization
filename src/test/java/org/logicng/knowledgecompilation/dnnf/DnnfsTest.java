@@ -16,7 +16,6 @@ public class DnnfsTest {
         final FormulaFactory f = new FormulaFactory();
         final FormulaRandomizer randomizer = new FormulaRandomizer(f, FormulaRandomizerConfig.builder().seed(42).build());
         for (int i = 0; i < 100; i++) {
-            System.out.println(i);
             final Formula formula = randomizer.formula(4);
             final Dnnf dnnf = new DnnfFactory().compile(formula);
             final Dnnf deserialized = Dnnfs.deserialize(f, Dnnfs.serialize(dnnf));

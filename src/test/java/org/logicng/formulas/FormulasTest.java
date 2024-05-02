@@ -11,6 +11,7 @@ import static org.logicng.formulas.Formulas.serialize;
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormulas;
 import org.junit.jupiter.api.Test;
 import org.logicng.io.parsers.ParserException;
+import org.logicng.io.parsers.PseudoBooleanParser;
 import org.logicng.util.FormulaRandomizer;
 import org.logicng.util.FormulaRandomizerConfig;
 
@@ -34,12 +35,13 @@ public class FormulasTest {
     @Test
     public void testConstraintPerformance() throws IOException, ParserException {
         final FormulaFactory f1 = new FormulaFactory();
+        final PseudoBooleanParser p1 = new PseudoBooleanParser(f1);
         final long t00 = System.currentTimeMillis();
         final List<String> lines = Files.readAllLines(ORIGINAL);
         final long t0 = System.currentTimeMillis();
         final List<Formula> constraints = new ArrayList<>();
         for (final String line : lines) {
-            constraints.add(f1.parse(line));
+            constraints.add(p1.parse(line));
         }
 
         final FormulaFactory f2 = new FormulaFactory();
