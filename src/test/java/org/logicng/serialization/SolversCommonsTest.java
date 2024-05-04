@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0 and MIT
 // Copyright 2023-20xx BooleWorks GmbH
 
-package org.logicng.solvers.sat;
+package org.logicng.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.logicng.solvers.sat.SolverSerializer.deserializeStack;
-import static org.logicng.solvers.sat.SolverSerializer.serializeStack;
+import static org.logicng.serialization.SolverSerializer.deserializeStack;
+import static org.logicng.serialization.SolverSerializer.serializeStack;
 
 import com.booleworks.logicng.collections.ProtoBufCollections;
 import org.junit.jupiter.api.Test;

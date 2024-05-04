@@ -1,6 +1,15 @@
-package org.logicng.solvers.sat;
+package org.logicng.serialization;
 
 import static com.booleworks.logicng.solvers.sat.ProtoBufSolverCommons.PBMiniSatStyleSolver;
+import static org.logicng.serialization.Collections.serializeBoolVec;
+import static org.logicng.serialization.Collections.serializeIntVec;
+import static org.logicng.serialization.ReflectionHelper.getField;
+import static org.logicng.serialization.ReflectionHelper.getSuperField;
+import static org.logicng.serialization.ReflectionHelper.setField;
+import static org.logicng.serialization.ReflectionHelper.setSuperField;
+import static org.logicng.serialization.SatSolverConfigs.serializeMinMode;
+import static org.logicng.serialization.SolverDatastructures.serializeIntQueue;
+import static org.logicng.serialization.SolverDatastructures.serializeLongQueue;
 
 import com.booleworks.logicng.collections.ProtoBufCollections;
 import com.booleworks.logicng.propositions.ProtoBufPropositions;
@@ -11,19 +20,20 @@ import com.booleworks.logicng.solvers.datastructures.ProtoBufSolverDatastructure
 import com.booleworks.logicng.solvers.datastructures.ProtoBufSolverDatastructures.PBProofInformation;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import org.logicng.collections.Collections;
+import org.logicng.collections.LNGIntVector;
 import org.logicng.collections.LNGVector;
 import org.logicng.datastructures.Tristate;
 import org.logicng.formulas.FormulaFactory;
 import org.logicng.propositions.Proposition;
-import org.logicng.propositions.Propositions;
 import org.logicng.propositions.StandardProposition;
 import org.logicng.solvers.MiniSat;
-import org.logicng.solvers.SolverWrapperState;
 import org.logicng.solvers.datastructures.MSClause;
 import org.logicng.solvers.datastructures.MSVariable;
 import org.logicng.solvers.datastructures.MSWatcher;
-import org.logicng.solvers.datastructures.SolverDatastructures;
+import org.logicng.solvers.sat.GlucoseSyrup;
+import org.logicng.solvers.sat.MiniCard;
+import org.logicng.solvers.sat.MiniSat2Solver;
+import org.logicng.solvers.sat.MiniSatStyleSolver;
 import org.logicng.solvers.sat.MiniSatStyleSolver.ProofInformation;
 import org.logicng.util.Pair;
 
@@ -78,11 +88,11 @@ public class SolverSerializer {
             if (!(p instanceof StandardProposition)) {
                 throw new IllegalArgumentException("Can only serialize Standard propositions");
             }
-            return Propositions.serialize((StandardProposition) p).toByteArray();
+            return Propositions.serializePropositions((StandardProposition) p).toByteArray();
         };
         final Function<byte[], Proposition> deserializer = (final byte[] bs) -> {
             try {
-                return Propositions.deserialize(f, ProtoBufPropositions.PBStandardProposition.newBuilder().mergeFrom(bs).build());
+                return Propositions.deserializePropositions(f, ProtoBufPropositions.PBStandardProposition.newBuilder().mergeFrom(bs).build());
             } catch (final InvalidProtocolBufferException e) {
                 throw new IllegalArgumentException("Can only deserialize Standard propositions");
             }
@@ -232,137 +242,146 @@ public class SolverSerializer {
     }
 
     Pair<PBMiniSatStyleSolver, IdentityHashMap<MSClause, Integer>> serializeCommon(final MiniSatStyleSolver solver) {
-        final IdentityHashMap<MSClause, Integer> clauseMap = generateClauseMap(solver.clauses, solver.learnts);
+        final LNGVector<MSClause> clauses = getSuperField(solver, "clauses");
+        final LNGVector<MSClause> learnts = getSuperField(solver, "learnts");
+        final IdentityHashMap<MSClause, Integer> clauseMap = generateClauseMap(clauses, learnts);
         final PBMiniSatStyleSolver.Builder builder = PBMiniSatStyleSolver.newBuilder();
-        builder.setConfig(SatSolverConfigs.serialize(solver.config));
-        builder.setOk(solver.ok);
-        builder.setQhead(solver.qhead);
-        builder.setClauses(serializeClauseVec(solver.clauses, clauseMap));
-        builder.setLearnts(serializeClauseVec(solver.learnts, clauseMap));
-        builder.setWatches(serializeWatches(solver.watches, clauseMap));
-        builder.setVars(serializeVarVec(solver.vars, clauseMap));
-        builder.setOrderHeap(SolverDatastructures.serialize(solver.orderHeap));
-        builder.setTrail(Collections.serialize(solver.trail));
-        builder.setTrailLim(Collections.serialize(solver.trailLim));
-        builder.setModel(Collections.serialize(solver.model));
-        builder.setConflict(Collections.serialize(solver.conflict));
-        builder.setAssumptions(Collections.serialize(solver.assumptions));
-        builder.setSeen(Collections.serialize(solver.seen));
-        builder.setAnalyzeBtLevel(solver.analyzeBtLevel);
-        builder.setClaInc(solver.claInc);
-        builder.setSimpDBAssigns(solver.simpDBAssigns);
-        builder.setSimpDBProps(solver.simpDBProps);
-        builder.setClausesLiterals(solver.clausesLiterals);
-        builder.setLearntsLiterals(solver.learntsLiterals);
+        builder.setConfig(SatSolverConfigs.serializeMiniSatConfig(getSuperField(solver, "config")));
+        builder.setOk(getSuperField(solver, "ok"));
+        builder.setQhead(getSuperField(solver, "qhead"));
+        builder.setClauses(serializeClauseVec(clauses, clauseMap));
+        builder.setLearnts(serializeClauseVec(learnts, clauseMap));
+        builder.setWatches(serializeWatches(getSuperField(solver, "watches"), clauseMap));
+        builder.setVars(serializeVarVec(getSuperField(solver, "vars"), clauseMap));
+        builder.setOrderHeap(SolverDatastructures.serializeHeap(getSuperField(solver, "orderHeap")));
+        builder.setTrail(serializeIntVec(getSuperField(solver, "trail")));
+        builder.setTrailLim(serializeIntVec(getSuperField(solver, "trailLim")));
+        builder.setModel(serializeBoolVec(getSuperField(solver, "model")));
+        builder.setConflict(serializeIntVec(getSuperField(solver, "conflict")));
+        builder.setAssumptions(serializeIntVec(getSuperField(solver, "assumptions")));
+        builder.setSeen(serializeBoolVec(getSuperField(solver, "seen")));
+        builder.setAnalyzeBtLevel(getSuperField(solver, "analyzeBtLevel"));
+        builder.setClaInc(getSuperField(solver, "claInc"));
+        builder.setSimpDBAssigns(getSuperField(solver, "simpDBAssigns"));
+        builder.setSimpDBProps(getSuperField(solver, "simpDBProps"));
+        builder.setClausesLiterals(getSuperField(solver, "clausesLiterals"));
+        builder.setLearntsLiterals(getSuperField(solver, "learntsLiterals"));
 
-        builder.setVarDecay(solver.varDecay);
-        builder.setVarInc(solver.varInc);
-        builder.setCcminMode(SatSolverConfigs.serialize(solver.ccminMode));
-        builder.setRestartFirst(solver.restartFirst);
-        builder.setRestartInc(solver.restartInc);
-        builder.setClauseDecay(solver.clauseDecay);
-        builder.setShouldRemoveSatsisfied(solver.shouldRemoveSatsisfied);
-        builder.setLearntsizeInc(solver.learntsizeInc);
-        builder.setIncremental(solver.incremental);
+        builder.setVarDecay(getSuperField(solver, "varDecay"));
+        builder.setVarInc(getSuperField(solver, "varInc"));
+        builder.setCcminMode(serializeMinMode(getSuperField(solver, "ccminMode")));
+        builder.setRestartFirst(getSuperField(solver, "restartFirst"));
+        builder.setRestartInc(getSuperField(solver, "restartInc"));
+        builder.setClauseDecay(getSuperField(solver, "clauseDecay"));
+        builder.setShouldRemoveSatsisfied(getSuperField(solver, "shouldRemoveSatsisfied"));
+        builder.setLearntsizeInc(getSuperField(solver, "learntsizeInc"));
+        builder.setIncremental(getSuperField(solver, "incremental"));
 
-        builder.putAllName2Idx(solver.name2idx);
+        builder.putAllName2Idx(getSuperField(solver, "name2idx"));
 
-        if (solver.pgProof != null) {
-            builder.setPgProof(Collections.serialize(solver.pgProof));
+        final LNGVector<LNGIntVector> pgProof = getSuperField(solver, "pgProof");
+        if (pgProof != null) {
+            builder.setPgProof(Collections.serializeVec(pgProof));
         }
-        if (solver.pgOriginalClauses != null) {
-            for (final ProofInformation oc : solver.pgOriginalClauses) {
+        final LNGVector<ProofInformation> pgOriginalClauses = getSuperField(solver, "pgOriginalClauses");
+        if (pgOriginalClauses != null) {
+            for (final ProofInformation oc : pgOriginalClauses) {
                 builder.addPgOriginalClauses(serialize(oc));
             }
         }
 
-        if (solver.backboneCandidates != null) {
-            builder.setBackboneCandidates(serializeStack(solver.backboneCandidates));
+        final Stack<Integer> backboneCandidates = getSuperField(solver, "backboneCandidates");
+        if (backboneCandidates != null) {
+            builder.setBackboneCandidates(serializeStack(backboneCandidates));
         }
-        if (solver.backboneAssumptions != null) {
-            builder.setBackboneAssumptions(Collections.serialize(solver.backboneAssumptions));
+        final LNGIntVector backboneAssumptions = getSuperField(solver, "backboneAssumptions");
+        if (backboneAssumptions != null) {
+            builder.setBackboneAssumptions(serializeIntVec(backboneAssumptions));
         }
-        if (solver.backboneMap != null) {
-            builder.putAllBackboneMap(serializeBbMap(solver.backboneMap));
+        final HashMap<Integer, Tristate> backboneMap = getSuperField(solver, "backboneMap");
+        if (backboneMap != null) {
+            builder.putAllBackboneMap(serializeBbMap(backboneMap));
         }
-        builder.setComputingBackbone(solver.computingBackbone);
+        builder.setComputingBackbone(getSuperField(solver, "computingBackbone"));
 
-        builder.setSelectionOrder(Collections.serialize(solver.selectionOrder));
-        builder.setSelectionOrderIdx(solver.selectionOrderIdx);
+        builder.setSelectionOrder(serializeIntVec(getSuperField(solver, "selectionOrder")));
+        builder.setSelectionOrderIdx(getSuperField(solver, "selectionOrderIdx"));
 
-        builder.setLearntsizeAdjustConfl(solver.learntsizeAdjustConfl);
-        builder.setLearntsizeAdjustCnt(solver.learntsizeAdjustCnt);
-        builder.setLearntsizeAdjustStartConfl(solver.learntsizeAdjustStartConfl);
-        builder.setLearntsizeAdjustInc(solver.learntsizeAdjustInc);
-        builder.setMaxLearnts(solver.maxLearnts);
+        builder.setLearntsizeAdjustConfl(getSuperField(solver, "learntsizeAdjustConfl"));
+        builder.setLearntsizeAdjustCnt(getSuperField(solver, "learntsizeAdjustCnt"));
+        builder.setLearntsizeAdjustStartConfl(getSuperField(solver, "learntsizeAdjustStartConfl"));
+        builder.setLearntsizeAdjustInc(getSuperField(solver, "learntsizeAdjustInc"));
+        builder.setMaxLearnts(getSuperField(solver, "maxLearnts"));
 
         return new Pair<>(builder.build(), clauseMap);
     }
 
     private Map<Integer, MSClause> deserializeCommon(final PBMiniSatStyleSolver bin, final MiniSatStyleSolver solver) {
         final Map<Integer, MSClause> clauseMap = new TreeMap<>();
-        solver.config = SatSolverConfigs.deserialize(bin.getConfig());
-        solver.ok = bin.getOk();
-        solver.qhead = bin.getQhead();
-        solver.clauses = deserializeClauseVec(bin.getClauses(), clauseMap);
-        solver.learnts = deserializeClauseVec(bin.getLearnts(), clauseMap);
-        solver.watches = deserializeWatches(bin.getWatches(), clauseMap);
-        solver.vars = deserializeVarVec(bin.getVars(), clauseMap);
-        solver.orderHeap = SolverDatastructures.deserialize(bin.getOrderHeap(), solver);
-        solver.trail = Collections.deserialize(bin.getTrail());
-        solver.trailLim = Collections.deserialize(bin.getTrailLim());
-        solver.model = Collections.deserialize(bin.getModel());
-        solver.conflict = Collections.deserialize(bin.getConflict());
-        solver.assumptions = Collections.deserialize(bin.getAssumptions());
-        solver.seen = Collections.deserialize(bin.getSeen());
-        solver.analyzeBtLevel = bin.getAnalyzeBtLevel();
-        solver.claInc = bin.getClaInc();
-        solver.simpDBAssigns = bin.getSimpDBAssigns();
-        solver.simpDBProps = bin.getSimpDBProps();
-        solver.clausesLiterals = bin.getClausesLiterals();
-        solver.learntsLiterals = bin.getLearntsLiterals();
+        setSuperField(solver, "config", SatSolverConfigs.deserializeMiniSatConfig(bin.getConfig()));
+        setSuperField(solver, "ok", bin.getOk());
+        setSuperField(solver, "qhead", bin.getQhead());
+        setSuperField(solver, "clauses", deserializeClauseVec(bin.getClauses(), clauseMap));
+        setSuperField(solver, "learnts", deserializeClauseVec(bin.getLearnts(), clauseMap));
+        setSuperField(solver, "watches", deserializeWatches(bin.getWatches(), clauseMap));
+        setSuperField(solver, "vars", deserializeVarVec(bin.getVars(), clauseMap));
+        setSuperField(solver, "orderHeap", SolverDatastructures.deserializeHeap(bin.getOrderHeap(), solver));
+        setSuperField(solver, "trail", Collections.deserializeIntVec(bin.getTrail()));
+        setSuperField(solver, "trailLim", Collections.deserializeIntVec(bin.getTrailLim()));
+        setSuperField(solver, "model", Collections.deserializeBooVec(bin.getModel()));
+        setSuperField(solver, "conflict", Collections.deserializeIntVec(bin.getConflict()));
+        setSuperField(solver, "assumptions", Collections.deserializeIntVec(bin.getAssumptions()));
+        setSuperField(solver, "seen", Collections.deserializeBooVec(bin.getSeen()));
+        setSuperField(solver, "analyzeBtLevel", bin.getAnalyzeBtLevel());
+        setSuperField(solver, "claInc", bin.getClaInc());
+        setSuperField(solver, "simpDBAssigns", bin.getSimpDBAssigns());
+        setSuperField(solver, "simpDBProps", bin.getSimpDBProps());
+        setSuperField(solver, "clausesLiterals", bin.getClausesLiterals());
+        setSuperField(solver, "learntsLiterals", bin.getLearntsLiterals());
 
-        solver.varDecay = bin.getVarDecay();
-        solver.varInc = bin.getVarInc();
-        solver.ccminMode = SatSolverConfigs.deserialize(bin.getCcminMode());
-        solver.restartFirst = bin.getRestartFirst();
-        solver.restartInc = bin.getRestartInc();
-        solver.clauseDecay = bin.getClauseDecay();
-        solver.shouldRemoveSatsisfied = bin.getShouldRemoveSatsisfied();
-        solver.learntsizeInc = bin.getLearntsizeInc();
-        solver.incremental = bin.getIncremental();
+        setSuperField(solver, "varDecay", bin.getVarDecay());
+        setSuperField(solver, "varInc", bin.getVarInc());
+        setSuperField(solver, "ccminMode", SatSolverConfigs.deserializeMinMode(bin.getCcminMode()));
+        setSuperField(solver, "restartFirst", bin.getRestartFirst());
+        setSuperField(solver, "restartInc", bin.getRestartInc());
+        setSuperField(solver, "clauseDecay", bin.getClauseDecay());
+        setSuperField(solver, "shouldRemoveSatsisfied", bin.getShouldRemoveSatsisfied());
+        setSuperField(solver, "learntsizeInc", bin.getLearntsizeInc());
+        setSuperField(solver, "incremental", bin.getIncremental());
 
-        solver.name2idx = new TreeMap<>(bin.getName2IdxMap());
-        solver.idx2name = new TreeMap<>();
-        solver.name2idx.forEach((k, v) -> solver.idx2name.put(v, k));
+        setSuperField(solver, "name2idx", new TreeMap<>(bin.getName2IdxMap()));
+        final Map<Integer, String> idx2name = new TreeMap<>();
+        bin.getName2IdxMap().forEach((k, v) -> idx2name.put(v, k));
+        setSuperField(solver, "idx2name", idx2name);
 
         if (bin.hasPgProof()) {
-            solver.pgProof = Collections.deserialize(bin.getPgProof());
+            setSuperField(solver, "pgProof", Collections.deserializeVec(bin.getPgProof()));
         }
         if (bin.getPgOriginalClausesCount() > 0) {
-            solver.pgOriginalClauses = new LNGVector<>(bin.getPgOriginalClausesCount());
+            final LNGVector<ProofInformation> originalClauses = new LNGVector<>(bin.getPgOriginalClausesCount());
             for (final PBProofInformation pi : bin.getPgOriginalClausesList()) {
-                solver.pgOriginalClauses.push(deserialize(pi));
+                originalClauses.push(deserialize(pi));
             }
+            setSuperField(solver, "pgOriginalClauses", originalClauses);
         }
 
         if (bin.hasBackboneCandidates()) {
-            solver.backboneCandidates = deserializeStack(bin.getBackboneCandidates());
+            setSuperField(solver, "backboneCandidates", deserializeStack(bin.getBackboneCandidates()));
         }
         if (bin.hasBackboneAssumptions()) {
-            solver.backboneAssumptions = Collections.deserialize(bin.getBackboneAssumptions());
+            setSuperField(solver, "backboneAssumptions", Collections.deserializeIntVec(bin.getBackboneAssumptions()));
         }
-        solver.backboneMap = deserializeBbMap(bin.getBackboneMapMap());
-        solver.computingBackbone = bin.getComputingBackbone();
+        setSuperField(solver, "backboneMap", deserializeBbMap(bin.getBackboneMapMap()));
+        setSuperField(solver, "computingBackbone", bin.getComputingBackbone());
 
-        solver.selectionOrder = Collections.deserialize(bin.getSelectionOrder());
-        solver.selectionOrderIdx = bin.getSelectionOrderIdx();
+        setSuperField(solver, "selectionOrder", Collections.deserializeIntVec(bin.getSelectionOrder()));
+        setSuperField(solver, "selectionOrderIdx", bin.getSelectionOrderIdx());
 
-        solver.learntsizeAdjustConfl = bin.getLearntsizeAdjustConfl();
-        solver.learntsizeAdjustCnt = bin.getLearntsizeAdjustCnt();
-        solver.learntsizeAdjustStartConfl = bin.getLearntsizeAdjustStartConfl();
-        solver.learntsizeAdjustInc = bin.getLearntsizeAdjustInc();
-        solver.maxLearnts = bin.getMaxLearnts();
+        setSuperField(solver, "learntsizeAdjustConfl", bin.getLearntsizeAdjustConfl());
+        setSuperField(solver, "learntsizeAdjustCnt", bin.getLearntsizeAdjustCnt());
+        setSuperField(solver, "learntsizeAdjustStartConfl", bin.getLearntsizeAdjustStartConfl());
+        setSuperField(solver, "learntsizeAdjustInc", bin.getLearntsizeAdjustInc());
+        setSuperField(solver, "maxLearnts", bin.getMaxLearnts());
 
         return clauseMap;
     }
@@ -371,7 +390,7 @@ public class SolverSerializer {
         return PBMiniSat2.newBuilder()
                 .setCommon(serializeCommon(solver).first())
                 .setWrapper(serializeWrapperState(wrapperState))
-                .setUnitClauses(Collections.serialize(solver.unitClauses))
+                .setUnitClauses(serializeIntVec(getField(solver, "unitClauses")))
                 .build();
     }
 
@@ -379,58 +398,58 @@ public class SolverSerializer {
         return PBMiniSat2.newBuilder()
                 .setCommon(serializeCommon(solver).first())
                 .setWrapper(serializeWrapperState(wrapperState))
-                .setUnitClauses(Collections.serialize(solver.unitClauses))
+                .setUnitClauses(serializeIntVec(getField(solver, "unitClauses")))
                 .build();
     }
 
     MiniSat2Solver deserialize(final PBMiniSat2 bin) {
-        final MiniSat2Solver solver = new MiniSat2Solver(SatSolverConfigs.deserialize(bin.getCommon().getConfig()));
+        final MiniSat2Solver solver = new MiniSat2Solver(SatSolverConfigs.deserializeMiniSatConfig(bin.getCommon().getConfig()));
         deserializeCommon(bin.getCommon(), solver);
-        solver.unitClauses = Collections.deserialize(bin.getUnitClauses());
+        setField(solver, "unitClauses", Collections.deserializeIntVec(bin.getUnitClauses()));
         return solver;
     }
 
     PBGlucose serialize(final GlucoseSyrup solver, final SolverWrapperState wrapperState) {
         final Pair<PBMiniSatStyleSolver, IdentityHashMap<MSClause, Integer>> common = serializeCommon(solver);
         return PBGlucose.newBuilder()
-                .setGlucoseConfig(SatSolverConfigs.serialize(solver.glucoseConfig))
+                .setGlucoseConfig(SatSolverConfigs.serializeGlucoseConfig(getField(solver, "glucoseConfig")))
                 .setCommon(common.first())
                 .setWrapper(serializeWrapperState(wrapperState))
-                .setWatchesBin(serializeWatches(solver.watchesBin, common.second()))
-                .setPermDiff(Collections.serialize(solver.permDiff))
-                .setLastDecisionLevel(Collections.serialize(solver.lastDecisionLevel))
-                .setLbdQueue(SolverDatastructures.serialize(solver.lbdQueue))
-                .setTrailQueue(SolverDatastructures.serialize(solver.trailQueue))
-                .setAssump(Collections.serialize(solver.assump))
-                .setMyflag(solver.myflag)
-                .setAnalyzeLBD(solver.analyzeLBD)
-                .setAnalyzeSzWithoutSelectors(solver.analyzeSzWithoutSelectors)
-                .setNbclausesbeforereduce(solver.nbclausesbeforereduce)
-                .setConflicts(solver.conflicts)
-                .setConflictsRestarts(solver.conflictsRestarts)
-                .setSumLBD(solver.sumLBD)
-                .setCurRestart(solver.curRestart)
+                .setWatchesBin(serializeWatches(getField(solver, "watchesBin"), common.second()))
+                .setPermDiff(serializeIntVec(getField(solver, "permDiff")))
+                .setLastDecisionLevel(serializeIntVec(getField(solver, "lastDecisionLevel")))
+                .setLbdQueue(serializeLongQueue(getField(solver, "lbdQueue")))
+                .setTrailQueue(serializeIntQueue(getField(solver, "trailQueue")))
+                .setAssump(serializeBoolVec(getField(solver, "assump")))
+                .setMyflag(getField(solver, "myflag"))
+                .setAnalyzeLBD(getField(solver, "analyzeLBD"))
+                .setAnalyzeSzWithoutSelectors(getField(solver, "analyzeSzWithoutSelectors"))
+                .setNbclausesbeforereduce(getField(solver, "nbclausesbeforereduce"))
+                .setConflicts(getField(solver, "conflicts"))
+                .setConflictsRestarts(getField(solver, "conflictsRestarts"))
+                .setSumLBD(getField(solver, "sumLBD"))
+                .setCurRestart(getField(solver, "curRestart"))
                 .build();
     }
 
     private GlucoseSyrup deserialize(final PBGlucose bin) {
         final GlucoseSyrup solver =
-                new GlucoseSyrup(SatSolverConfigs.deserialize(bin.getCommon().getConfig()), SatSolverConfigs.deserialize(bin.getGlucoseConfig()));
+                new GlucoseSyrup(SatSolverConfigs.deserializeMiniSatConfig(bin.getCommon().getConfig()), SatSolverConfigs.deserializeGlucoseConfig(bin.getGlucoseConfig()));
         final Map<Integer, MSClause> clauseMap = deserializeCommon(bin.getCommon(), solver);
-        solver.watchesBin = deserializeWatches(bin.getWatchesBin(), clauseMap);
-        solver.permDiff = Collections.deserialize(bin.getPermDiff());
-        solver.lastDecisionLevel = Collections.deserialize(bin.getLastDecisionLevel());
-        solver.lbdQueue = SolverDatastructures.deserialize(bin.getLbdQueue());
-        solver.trailQueue = SolverDatastructures.deserialize(bin.getTrailQueue());
-        solver.assump = Collections.deserialize(bin.getAssump());
-        solver.myflag = bin.getMyflag();
-        solver.analyzeLBD = bin.getAnalyzeLBD();
-        solver.analyzeSzWithoutSelectors = bin.getAnalyzeSzWithoutSelectors();
-        solver.nbclausesbeforereduce = bin.getNbclausesbeforereduce();
-        solver.conflicts = bin.getConflicts();
-        solver.conflictsRestarts = bin.getConflictsRestarts();
-        solver.sumLBD = bin.getSumLBD();
-        solver.curRestart = bin.getCurRestart();
+        setField(solver, "watchesBin", deserializeWatches(bin.getWatchesBin(), clauseMap));
+        setField(solver, "permDiff", Collections.deserializeIntVec(bin.getPermDiff()));
+        setField(solver, "lastDecisionLevel", Collections.deserializeIntVec(bin.getLastDecisionLevel()));
+        setField(solver, "lbdQueue", SolverDatastructures.deserializeLongQueue(bin.getLbdQueue()));
+        setField(solver, "trailQueue", SolverDatastructures.deserializeIntQueue(bin.getTrailQueue()));
+        setField(solver, "assump", Collections.deserializeBooVec(bin.getAssump()));
+        setField(solver, "myflag", bin.getMyflag());
+        setField(solver, "analyzeLBD", bin.getAnalyzeLBD());
+        setField(solver, "analyzeSzWithoutSelectors", bin.getAnalyzeSzWithoutSelectors());
+        setField(solver, "nbclausesbeforereduce", bin.getNbclausesbeforereduce());
+        setField(solver, "conflicts", bin.getConflicts());
+        setField(solver, "conflictsRestarts", bin.getConflictsRestarts());
+        setField(solver, "sumLBD", bin.getSumLBD());
+        setField(solver, "curRestart", bin.getCurRestart());
         return solver;
     }
 
@@ -449,7 +468,7 @@ public class SolverSerializer {
                                                                                     final IdentityHashMap<MSClause, Integer> clauseMap) {
         final ProtoBufSolverDatastructures.PBMsClauseVector.Builder builder = ProtoBufSolverDatastructures.PBMsClauseVector.newBuilder();
         for (final MSClause clause : vec) {
-            builder.addElement(SolverDatastructures.serialize(clause, clauseMap.get(clause)));
+            builder.addElement(SolverDatastructures.serializeClause(clause, clauseMap.get(clause)));
         }
         return builder.build();
     }
@@ -458,7 +477,7 @@ public class SolverSerializer {
         final LNGVector<MSClause> vec = new LNGVector<>(bin.getElementCount());
         for (int i = 0; i < bin.getElementCount(); i++) {
             final ProtoBufSolverDatastructures.PBMsClause binClause = bin.getElement(i);
-            final MSClause clause = SolverDatastructures.deserialize(binClause);
+            final MSClause clause = SolverDatastructures.deserializeClause(binClause);
             clauseMap.put(binClause.getId(), clause);
             vec.push(clause);
         }
@@ -471,7 +490,7 @@ public class SolverSerializer {
         for (final LNGVector<MSWatcher> watchList : vec) {
             final ProtoBufSolverDatastructures.PBMsWatcherVector.Builder watchBuilder = ProtoBufSolverDatastructures.PBMsWatcherVector.newBuilder();
             for (final MSWatcher watch : watchList) {
-                watchBuilder.addElement(SolverDatastructures.serialize(watch, clauseMap));
+                watchBuilder.addElement(SolverDatastructures.serializeWatcher(watch, clauseMap));
             }
             builder.addElement(watchBuilder.build());
         }
@@ -485,7 +504,7 @@ public class SolverSerializer {
             final ProtoBufSolverDatastructures.PBMsWatcherVector binWatch = bin.getElement(i);
             final LNGVector<MSWatcher> watch = new LNGVector<>(binWatch.getElementCount());
             for (int j = 0; j < binWatch.getElementCount(); j++) {
-                watch.push(SolverDatastructures.deserialize(binWatch.getElement(j), clauseMap));
+                watch.push(SolverDatastructures.deserializeWatcher(binWatch.getElement(j), clauseMap));
             }
             vec.push(watch);
         }
@@ -496,7 +515,7 @@ public class SolverSerializer {
                                                                                    final IdentityHashMap<MSClause, Integer> clauseMap) {
         final ProtoBufSolverDatastructures.PBMsVariableVector.Builder builder = ProtoBufSolverDatastructures.PBMsVariableVector.newBuilder();
         for (final MSVariable var : vec) {
-            builder.addElement(SolverDatastructures.serialize(var, clauseMap));
+            builder.addElement(SolverDatastructures.serializeVariable(var, clauseMap));
         }
         return builder.build();
     }
@@ -504,12 +523,12 @@ public class SolverSerializer {
     private static LNGVector<MSVariable> deserializeVarVec(final ProtoBufSolverDatastructures.PBMsVariableVector bin, final Map<Integer, MSClause> clauseMap) {
         final LNGVector<MSVariable> vec = new LNGVector<>(bin.getElementCount());
         for (int i = 0; i < bin.getElementCount(); i++) {
-            vec.push(SolverDatastructures.deserialize(bin.getElement(i), clauseMap));
+            vec.push(SolverDatastructures.deserializeVariable(bin.getElement(i), clauseMap));
         }
         return vec;
     }
 
-    static ProtoBufCollections.PBIntVector serializeStack(final Stack<Integer> stack) {
+    public static ProtoBufCollections.PBIntVector serializeStack(final Stack<Integer> stack) {
         if (stack == null) {
             return null;
         }
@@ -521,7 +540,7 @@ public class SolverSerializer {
         return vec.build();
     }
 
-    static Stack<Integer> deserializeStack(final ProtoBufCollections.PBIntVector vec) {
+    public static Stack<Integer> deserializeStack(final ProtoBufCollections.PBIntVector vec) {
         final Stack<Integer> stack = new Stack<>();
         for (int i = 0; i < vec.getSize(); i++) {
             stack.push(vec.getElement(i));
@@ -531,7 +550,7 @@ public class SolverSerializer {
 
     private static HashMap<Integer, ProtoBufSolverDatastructures.PBTristate> serializeBbMap(final Map<Integer, Tristate> map) {
         final HashMap<Integer, ProtoBufSolverDatastructures.PBTristate> ser = new HashMap<>();
-        map.forEach((k, v) -> ser.put(k, SolverDatastructures.serialize(v)));
+        map.forEach((k, v) -> ser.put(k, SolverDatastructures.serializeTristate(v)));
         return ser;
     }
 
@@ -540,30 +559,30 @@ public class SolverSerializer {
             return null;
         }
         final HashMap<Integer, Tristate> ser = new HashMap<>();
-        map.forEach((k, v) -> ser.put(k, SolverDatastructures.deserialize(v)));
+        map.forEach((k, v) -> ser.put(k, SolverDatastructures.deserializeTristate(v)));
         return ser;
     }
 
     private static ProtoBufSatSolver.PBWrapperState serializeWrapperState(final SolverWrapperState state) {
         return ProtoBufSatSolver.PBWrapperState.newBuilder()
-                .setResult(SolverDatastructures.serialize(state.result))
-                .setValidStates(Collections.serialize(state.validStates))
+                .setResult(SolverDatastructures.serializeTristate(state.result))
+                .setValidStates(serializeIntVec(state.validStates))
                 .setNextStateId(state.nextStateId)
                 .setLastComputationWithAssumptions(state.lastComputationWithAssumptions)
-                .setSolverStyle(SolverWrapperState.serialize(state.solverStyle))
+                .setSolverStyle(SolverWrapperState.serializeSolverStyle(state.solverStyle))
                 .build();
     }
 
     private PBProofInformation serialize(final ProofInformation pi) {
-        final PBProofInformation.Builder builder = PBProofInformation.newBuilder().setClause(Collections.serialize(pi.clause));
-        if (pi.proposition != null) {
-            builder.setProposition(ByteString.copyFrom(this.serializer.apply(pi.proposition)));
+        final PBProofInformation.Builder builder = PBProofInformation.newBuilder().setClause(serializeIntVec(pi.clause()));
+        if (pi.proposition() != null) {
+            builder.setProposition(ByteString.copyFrom(this.serializer.apply(pi.proposition())));
         }
         return builder.build();
     }
 
     private ProofInformation deserialize(final PBProofInformation bin) {
         final Proposition prop = bin.hasProposition() ? this.deserializer.apply(bin.getProposition().toByteArray()) : null;
-        return new ProofInformation(Collections.deserialize(bin.getClause()), prop);
+        return new ProofInformation(Collections.deserializeIntVec(bin.getClause()), prop);
     }
 }

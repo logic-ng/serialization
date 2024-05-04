@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 and MIT
 // Copyright 2023-20xx BooleWorks GmbH
 
-package org.logicng.solvers.datastructures;
+package org.logicng.serialization;
 
 import com.booleworks.logicng.solvers.datastructures.ProtoBufSolverDatastructures.PBLngBoundedIntQueue;
 import com.booleworks.logicng.solvers.datastructures.ProtoBufSolverDatastructures.PBLngBoundedLongQueue;
@@ -10,9 +10,14 @@ import com.booleworks.logicng.solvers.datastructures.ProtoBufSolverDatastructure
 import com.booleworks.logicng.solvers.datastructures.ProtoBufSolverDatastructures.PBMsVariable;
 import com.booleworks.logicng.solvers.datastructures.ProtoBufSolverDatastructures.PBMsWatcher;
 import com.booleworks.logicng.solvers.datastructures.ProtoBufSolverDatastructures.PBTristate;
-import org.logicng.collections.Collections;
 import org.logicng.collections.LNGIntVector;
 import org.logicng.datastructures.Tristate;
+import org.logicng.solvers.datastructures.LNGBoundedIntQueue;
+import org.logicng.solvers.datastructures.LNGBoundedLongQueue;
+import org.logicng.solvers.datastructures.LNGHeap;
+import org.logicng.solvers.datastructures.MSClause;
+import org.logicng.solvers.datastructures.MSVariable;
+import org.logicng.solvers.datastructures.MSWatcher;
 import org.logicng.solvers.sat.MiniSatStyleSolver;
 
 import java.util.IdentityHashMap;
@@ -30,7 +35,7 @@ public interface SolverDatastructures {
      * @param tristate the tristate value
      * @return the protocol buffer
      */
-    static PBTristate serialize(final Tristate tristate) {
+    static PBTristate serializeTristate(final Tristate tristate) {
         switch (tristate) {
             case FALSE:
                 return PBTristate.FALSE;
@@ -48,7 +53,7 @@ public interface SolverDatastructures {
      * @param bin the protocol buffer
      * @return the tristate
      */
-    static Tristate deserialize(final PBTristate bin) {
+    static Tristate deserializeTristate(final PBTristate bin) {
         switch (bin) {
             case FALSE:
                 return Tristate.FALSE;
@@ -66,10 +71,10 @@ public interface SolverDatastructures {
      * @param heap the heap
      * @return the protocol buffer
      */
-    static PBLngHeap serialize(final LNGHeap heap) {
+    static PBLngHeap serializeHeap(final LNGHeap heap) {
         return PBLngHeap.newBuilder()
-                .setHeap(Collections.serialize(heap.getHeap()))
-                .setIndices(Collections.serialize(heap.getIndices()))
+                .setHeap(Collections.serializeIntVec(heap.getHeap()))
+                .setIndices(Collections.serializeIntVec(heap.getIndices()))
                 .build();
     }
 
@@ -78,9 +83,9 @@ public interface SolverDatastructures {
      * @param bin the protocol buffer
      * @return the heap
      */
-    static LNGHeap deserialize(final PBLngHeap bin, final MiniSatStyleSolver solver) {
-        final LNGIntVector heap = Collections.deserialize(bin.getHeap());
-        final LNGIntVector indices = Collections.deserialize(bin.getIndices());
+    static LNGHeap deserializeHeap(final PBLngHeap bin, final MiniSatStyleSolver solver) {
+        final LNGIntVector heap = Collections.deserializeIntVec(bin.getHeap());
+        final LNGIntVector indices = Collections.deserializeIntVec(bin.getIndices());
         return new LNGHeap(solver, heap, indices);
     }
 
@@ -90,9 +95,9 @@ public interface SolverDatastructures {
      * @param id     the clause ID
      * @return the protocol buffer
      */
-    static PBMsClause serialize(final MSClause clause, final int id) {
+    static PBMsClause serializeClause(final MSClause clause, final int id) {
         return PBMsClause.newBuilder()
-                .setData(Collections.serialize(clause.getData()))
+                .setData(Collections.serializeIntVec(clause.getData()))
                 .setLearnt(clause.learnt())
                 .setIsAtMost(clause.isAtMost())
                 .setActivity(clause.activity())
@@ -111,9 +116,9 @@ public interface SolverDatastructures {
      * @param bin the protocol buffer
      * @return the clause
      */
-    static MSClause deserialize(final PBMsClause bin) {
+    static MSClause deserializeClause(final PBMsClause bin) {
         return new MSClause(
-                Collections.deserialize(bin.getData()),
+                Collections.deserializeIntVec(bin.getData()),
                 bin.getLearnt(),
                 bin.getIsAtMost(),
                 bin.getActivity(),
@@ -132,9 +137,9 @@ public interface SolverDatastructures {
      * @param clauseMap a mapping from clause to clause ID
      * @return the protocol buffer
      */
-    static PBMsVariable serialize(final MSVariable variable, final IdentityHashMap<MSClause, Integer> clauseMap) {
+    static PBMsVariable serializeVariable(final MSVariable variable, final IdentityHashMap<MSClause, Integer> clauseMap) {
         return PBMsVariable.newBuilder()
-                .setAssignment(serialize(variable.assignment()))
+                .setAssignment(serializeTristate(variable.assignment()))
                 .setLevel(variable.level())
                 .setActivity(variable.activity())
                 .setPolarity(variable.polarity())
@@ -148,9 +153,9 @@ public interface SolverDatastructures {
      * @param clauseMap a mapping from clause ID to clause
      * @return the variable
      */
-    static MSVariable deserialize(final PBMsVariable bin, final Map<Integer, MSClause> clauseMap) {
+    static MSVariable deserializeVariable(final PBMsVariable bin, final Map<Integer, MSClause> clauseMap) {
         final MSClause reason = bin.getReason() == -1 ? null : clauseMap.get(bin.getReason());
-        return new MSVariable(deserialize(bin.getAssignment()), bin.getLevel(), reason, bin.getActivity(), bin.getPolarity(), bin.getDecision());
+        return new MSVariable(deserializeTristate(bin.getAssignment()), bin.getLevel(), reason, bin.getActivity(), bin.getPolarity(), bin.getDecision());
     }
 
     /**
@@ -159,7 +164,7 @@ public interface SolverDatastructures {
      * @param clauseMap a mapping from clause to clause ID
      * @return the protocol buffer
      */
-    static PBMsWatcher serialize(final MSWatcher watcher, final IdentityHashMap<MSClause, Integer> clauseMap) {
+    static PBMsWatcher serializeWatcher(final MSWatcher watcher, final IdentityHashMap<MSClause, Integer> clauseMap) {
         return PBMsWatcher.newBuilder()
                 .setClause(clauseMap.get(watcher.clause()))
                 .setBlocker(watcher.blocker())
@@ -172,7 +177,7 @@ public interface SolverDatastructures {
      * @param clauseMap a mapping from clause ID to clause
      * @return the watcher
      */
-    static MSWatcher deserialize(final PBMsWatcher bin, final Map<Integer, MSClause> clauseMap) {
+    static MSWatcher deserializeWatcher(final PBMsWatcher bin, final Map<Integer, MSClause> clauseMap) {
         return new MSWatcher(clauseMap.get(bin.getClause()), bin.getBlocker());
     }
 
@@ -181,9 +186,9 @@ public interface SolverDatastructures {
      * @param queue the queue
      * @return the protocol buffer
      */
-    static PBLngBoundedIntQueue serialize(final LNGBoundedIntQueue queue) {
+    static PBLngBoundedIntQueue serializeIntQueue(final LNGBoundedIntQueue queue) {
         return PBLngBoundedIntQueue.newBuilder()
-                .setElems(Collections.serialize(queue.getElems()))
+                .setElems(Collections.serializeIntVec(queue.getElems()))
                 .setFirst(queue.getFirst())
                 .setLast(queue.getLast())
                 .setSumOfQueue(queue.getSumOfQueue())
@@ -197,8 +202,8 @@ public interface SolverDatastructures {
      * @param bin the protocol buffer
      * @return the queue
      */
-    static LNGBoundedIntQueue deserialize(final PBLngBoundedIntQueue bin) {
-        return new LNGBoundedIntQueue(Collections.deserialize(bin.getElems()), bin.getFirst(), bin.getLast(),
+    static LNGBoundedIntQueue deserializeIntQueue(final PBLngBoundedIntQueue bin) {
+        return new LNGBoundedIntQueue(Collections.deserializeIntVec(bin.getElems()), bin.getFirst(), bin.getLast(),
                 bin.getSumOfQueue(), bin.getMaxSize(), bin.getQueueSize());
     }
 
@@ -207,9 +212,9 @@ public interface SolverDatastructures {
      * @param queue the queue
      * @return the protocol buffer
      */
-    static PBLngBoundedLongQueue serialize(final LNGBoundedLongQueue queue) {
+    static PBLngBoundedLongQueue serializeLongQueue(final LNGBoundedLongQueue queue) {
         return PBLngBoundedLongQueue.newBuilder()
-                .setElems(Collections.serialize(queue.getElems()))
+                .setElems(Collections.serializeLongVec(queue.getElems()))
                 .setFirst(queue.getFirst())
                 .setLast(queue.getLast())
                 .setSumOfQueue(queue.getSumOfQueue())
@@ -223,8 +228,8 @@ public interface SolverDatastructures {
      * @param bin the protocol buffer
      * @return the queue
      */
-    static LNGBoundedLongQueue deserialize(final PBLngBoundedLongQueue bin) {
-        return new LNGBoundedLongQueue(Collections.deserialize(bin.getElems()), bin.getFirst(), bin.getLast(),
+    static LNGBoundedLongQueue deserializeLongQueue(final PBLngBoundedLongQueue bin) {
+        return new LNGBoundedLongQueue(Collections.deserializeLongVec(bin.getElems()), bin.getFirst(), bin.getLast(),
                 bin.getSumOfQueue(), bin.getMaxSize(), bin.getQueueSize());
     }
 }

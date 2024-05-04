@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0 and MIT
 // Copyright 2023-20xx BooleWorks GmbH
 
-package org.logicng.solvers.datastructures;
+package org.logicng.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.logicng.collections.CollectionComperator.assertVecEquals;
 
 import org.logicng.collections.LNGVector;
-
+import org.logicng.solvers.datastructures.LNGHeap;
+import org.logicng.solvers.datastructures.MSClause;
+import org.logicng.solvers.datastructures.MSVariable;
+import org.logicng.solvers.datastructures.MSWatcher;
 
 public class SolverDatastructureComparator {
 
@@ -22,7 +24,7 @@ public class SolverDatastructureComparator {
         if (c1 == null && c2 == null) {
             return;
         }
-        assertVecEquals(c1.getData(), c2.getData());
+        CollectionComperator.assertIntVecEquals(c1.getData(), c2.getData());
         assertThat(c1.learnt()).isEqualTo(c2.learnt());
         assertThat(c1.isAtMost()).isEqualTo(c2.isAtMost());
         assertThat(c1.activity()).isEqualTo(c2.activity());
@@ -54,8 +56,8 @@ public class SolverDatastructureComparator {
     }
 
     public static void assertHeapEquals(final LNGHeap heap1, final LNGHeap heap2) {
-        assertVecEquals(heap1.getHeap(), heap2.getHeap());
-        assertVecEquals(heap1.getIndices(), heap2.getIndices());
+        CollectionComperator.assertIntVecEquals(heap1.getHeap(), heap2.getHeap());
+        CollectionComperator.assertIntVecEquals(heap1.getIndices(), heap2.getIndices());
     }
 
     public static void assertWatchListsEquals(final LNGVector<LNGVector<MSWatcher>> w1, final LNGVector<LNGVector<MSWatcher>> w2) {

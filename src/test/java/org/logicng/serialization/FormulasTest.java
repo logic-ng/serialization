@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0 and MIT
 // Copyright 2023-20xx BooleWorks GmbH
 
-package org.logicng.formulas;
+package org.logicng.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.logicng.formulas.Formulas.deserialize;
-import static org.logicng.formulas.Formulas.deserializeList;
-import static org.logicng.formulas.Formulas.serialize;
+import static org.logicng.serialization.Formulas.deserializeFormulaList;
 
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormulas;
 import org.junit.jupiter.api.Test;
+import org.logicng.formulas.Formula;
+import org.logicng.formulas.FormulaFactory;
 import org.logicng.io.parsers.ParserException;
 import org.logicng.io.parsers.PseudoBooleanParser;
 import org.logicng.util.FormulaRandomizer;
@@ -46,7 +46,7 @@ public class FormulasTest {
 
         final FormulaFactory f2 = new FormulaFactory();
         final long t1 = System.currentTimeMillis();
-        final PBFormulas bin = serialize(constraints);
+        final PBFormulas bin = Formulas.serializeFormulas(constraints);
         final long t2 = System.currentTimeMillis();
         bin.writeTo(Files.newOutputStream(PROTO));
         final long t3 = System.currentTimeMillis();
@@ -58,11 +58,11 @@ public class FormulasTest {
         final FormulaFactory f3 = new FormulaFactory();
         final PBFormulas binList = PBFormulas.newBuilder().mergeFrom(Files.newInputStream(PROTO)).build();
         final long t5 = System.currentTimeMillis();
-        final List<Formula> deserialized = deserializeList(f2, binList);
+        final List<Formula> deserialized = deserializeFormulaList(f2, binList);
         final long t6 = System.currentTimeMillis();
         final PBFormulas zipList = PBFormulas.newBuilder().mergeFrom(new GZIPInputStream(Files.newInputStream(ZIP))).build();
         final long t7 = System.currentTimeMillis();
-        final List<Formula> deserializedZipped = deserializeList(f3, zipList);
+        final List<Formula> deserializedZipped = deserializeFormulaList(f3, zipList);
 
         System.out.printf("Read Original:   %d ms%n", t0 - t00);
         System.out.printf("Parse Original:  %d ms%n", t1 - t0);
@@ -99,8 +99,8 @@ public class FormulasTest {
         final FormulaRandomizer randomizer = new FormulaRandomizer(this.f, FormulaRandomizerConfig.builder().seed(42).build());
         for (int i = 0; i < 1000; i++) {
             final Formula original = randomizer.formula(5);
-            final PBFormulas serialized = serialize(original);
-            final Formula deserialized = deserialize(this.f, serialized);
+            final PBFormulas serialized = Formulas.serializeFormula(original);
+            final Formula deserialized = Formulas.deserializeFormula(this.f, serialized);
             assertThat(deserialized).isEqualTo(original);
         }
     }

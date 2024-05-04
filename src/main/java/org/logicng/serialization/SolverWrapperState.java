@@ -1,12 +1,15 @@
-package org.logicng.solvers;
+package org.logicng.serialization;
 
 import static com.booleworks.logicng.solvers.ProtoBufSatSolver.PBWrapperState;
+import static org.logicng.serialization.ReflectionHelper.getField;
+import static org.logicng.serialization.ReflectionHelper.getSuperField;
+import static org.logicng.serialization.ReflectionHelper.setField;
+import static org.logicng.serialization.ReflectionHelper.setSuperField;
 
 import com.booleworks.logicng.solvers.ProtoBufSatSolver.PBSolverStyle;
-import org.logicng.collections.Collections;
 import org.logicng.collections.LNGIntVector;
 import org.logicng.datastructures.Tristate;
-import org.logicng.solvers.datastructures.SolverDatastructures;
+import org.logicng.solvers.MiniSat;
 
 /**
  * A class which captures some information from the {@link MiniSat} wrapper class,
@@ -26,11 +29,11 @@ public class SolverWrapperState {
      * @param solver the solver
      */
     public SolverWrapperState(final MiniSat solver) {
-        this.result = solver.result;
-        this.validStates = solver.validStates;
-        this.nextStateId = solver.nextStateId;
-        this.lastComputationWithAssumptions = solver.lastComputationWithAssumptions;
-        this.solverStyle = solver.style;
+        this.result = getSuperField(solver, "result");
+        this.validStates = getField(solver, "validStates");
+        this.nextStateId = getField(solver, "nextStateId");
+        this.lastComputationWithAssumptions = getField(solver, "lastComputationWithAssumptions");
+        this.solverStyle = getField(solver, "style");
     }
 
     /**
@@ -39,11 +42,11 @@ public class SolverWrapperState {
      * @param wrapper the wrapper state
      */
     public static void setWrapperState(final MiniSat miniSat, final PBWrapperState wrapper) {
-        miniSat.result = SolverDatastructures.deserialize(wrapper.getResult());
-        miniSat.validStates = Collections.deserialize(wrapper.getValidStates());
-        miniSat.nextStateId = wrapper.getNextStateId();
-        miniSat.lastComputationWithAssumptions = wrapper.getLastComputationWithAssumptions();
-        miniSat.style = deserialize(wrapper.getSolverStyle());
+        setSuperField(miniSat, "result", SolverDatastructures.deserializeTristate(wrapper.getResult()));
+        setField(miniSat, "validStates", Collections.deserializeIntVec(wrapper.getValidStates()));
+        setField(miniSat, "nextStateId", wrapper.getNextStateId());
+        setField(miniSat, "lastComputationWithAssumptions", wrapper.getLastComputationWithAssumptions());
+        setField(miniSat, "style", deserializeSolverStyle(wrapper.getSolverStyle()));
     }
 
     /**
@@ -51,7 +54,7 @@ public class SolverWrapperState {
      * @param solverStyle the solver style
      * @return the protocol buffer
      */
-    public static PBSolverStyle serialize(final MiniSat.SolverStyle solverStyle) {
+    public static PBSolverStyle serializeSolverStyle(final MiniSat.SolverStyle solverStyle) {
         switch (solverStyle) {
             case MINISAT:
                 return PBSolverStyle.MINISAT;
@@ -69,7 +72,7 @@ public class SolverWrapperState {
      * @param bin the protocol buffer
      * @return the solver style
      */
-    private static MiniSat.SolverStyle deserialize(final PBSolverStyle bin) {
+    private static MiniSat.SolverStyle deserializeSolverStyle(final PBSolverStyle bin) {
         switch (bin) {
             case MINISAT:
                 return MiniSat.SolverStyle.MINISAT;

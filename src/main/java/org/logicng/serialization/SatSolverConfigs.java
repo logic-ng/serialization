@@ -1,10 +1,12 @@
-package org.logicng.solvers.sat;
+package org.logicng.serialization;
 
 import static com.booleworks.logicng.solvers.sat.ProtoBufSolverCommons.PBGlucoseConfig;
 import static com.booleworks.logicng.solvers.sat.ProtoBufSolverCommons.PBMiniSatConfig;
 
 import com.booleworks.logicng.solvers.sat.ProtoBufSolverCommons.PBClauseMinimization;
 import com.booleworks.logicng.solvers.sat.ProtoBufSolverCommons.PBCnfMethod;
+import org.logicng.solvers.sat.GlucoseConfig;
+import org.logicng.solvers.sat.MiniSatConfig;
 import org.logicng.solvers.sat.MiniSatConfig.CNFMethod;
 import org.logicng.solvers.sat.MiniSatConfig.ClauseMinimization;
 
@@ -20,23 +22,23 @@ public interface SatSolverConfigs {
      * @param config the configuration
      * @return the protocol buffer
      */
-    static PBMiniSatConfig serialize(final MiniSatConfig config) {
+    static PBMiniSatConfig serializeMiniSatConfig(final MiniSatConfig config) {
         return PBMiniSatConfig.newBuilder()
-                .setVarDecay(config.varDecay)
-                .setClauseMin(serialize(config.clauseMin))
-                .setRestartFirst(config.restartFirst)
-                .setRestartInc(config.restartInc)
-                .setClauseDecay(config.clauseDecay)
-                .setRemoveSatisfied(config.removeSatisfied)
-                .setLearntsizeFactor(config.learntsizeFactor)
-                .setLearntsizeInc(config.learntsizeInc)
-                .setIncremental(config.incremental)
-                .setInitialPhase(config.initialPhase)
-                .setProofGeneration(config.proofGeneration)
-                .setCnfMethod(serialize(config.cnfMethod))
-                .setBbInitialUBCheckForRotatableLiterals(config.bbInitialUBCheckForRotatableLiterals)
-                .setBbCheckForComplementModelLiterals(config.bbCheckForComplementModelLiterals)
-                .setBbCheckForRotatableLiterals(config.bbCheckForRotatableLiterals)
+                .setVarDecay(config.getVarDecay())
+                .setClauseMin(serializeMinMode(config.getClauseMin()))
+                .setRestartFirst(config.getRestartFirst())
+                .setRestartInc(config.getRestartInc())
+                .setClauseDecay(config.getClauseDecay())
+                .setRemoveSatisfied(config.isRemoveSatisfied())
+                .setLearntsizeFactor(config.getLearntsizeFactor())
+                .setLearntsizeInc(config.getLearntsizeInc())
+                .setIncremental(config.isIncremental())
+                .setInitialPhase(config.isInitialPhase())
+                .setProofGeneration(config.proofGeneration())
+                .setCnfMethod(serializeCnfMode(config.getCnfMethod()))
+                .setBbInitialUBCheckForRotatableLiterals(config.isBbInitialUBCheckForRotatableLiterals())
+                .setBbCheckForComplementModelLiterals(config.isBbCheckForComplementModelLiterals())
+                .setBbCheckForRotatableLiterals(config.isBbCheckForRotatableLiterals())
                 .build();
     }
 
@@ -45,10 +47,10 @@ public interface SatSolverConfigs {
      * @param bin the protocol buffer
      * @return the configuration
      */
-    static MiniSatConfig deserialize(final PBMiniSatConfig bin) {
+    static MiniSatConfig deserializeMiniSatConfig(final PBMiniSatConfig bin) {
         return MiniSatConfig.builder()
                 .varDecay(bin.getVarDecay())
-                .clMinimization(deserialize(bin.getClauseMin()))
+                .clMinimization(deserializeMinMode(bin.getClauseMin()))
                 .restartFirst(bin.getRestartFirst())
                 .restartInc(bin.getRestartInc())
                 .clauseDecay(bin.getClauseDecay())
@@ -58,7 +60,7 @@ public interface SatSolverConfigs {
                 .incremental(bin.getIncremental())
                 .initialPhase(bin.getInitialPhase())
                 .proofGeneration(bin.getProofGeneration())
-                .cnfMethod(deserialize(bin.getCnfMethod()))
+                .cnfMethod(deserializeCnfMode(bin.getCnfMethod()))
                 .bbInitialUBCheckForRotatableLiterals(bin.getBbInitialUBCheckForRotatableLiterals())
                 .bbCheckForComplementModelLiterals(bin.getBbCheckForComplementModelLiterals())
                 .bbCheckForRotatableLiterals(bin.getBbCheckForRotatableLiterals())
@@ -70,21 +72,21 @@ public interface SatSolverConfigs {
      * @param config the configuration
      * @return the protocol buffer
      */
-    static PBGlucoseConfig serialize(final GlucoseConfig config) {
+    static PBGlucoseConfig serializeGlucoseConfig(final GlucoseConfig config) {
         return PBGlucoseConfig.newBuilder()
-                .setLbLBDMinimizingClause(config.lbLBDMinimizingClause)
-                .setLbLBDFrozenClause(config.lbLBDFrozenClause)
-                .setLbSizeMinimizingClause(config.lbSizeMinimizingClause)
-                .setFirstReduceDB(config.firstReduceDB)
-                .setSpecialIncReduceDB(config.specialIncReduceDB)
-                .setIncReduceDB(config.incReduceDB)
-                .setFactorK(config.factorK)
-                .setFactorR(config.factorR)
-                .setSizeLBDQueue(config.sizeLBDQueue)
-                .setSizeTrailQueue(config.sizeTrailQueue)
-                .setReduceOnSize(config.reduceOnSize)
-                .setReduceOnSizeSize(config.reduceOnSizeSize)
-                .setMaxVarDecay(config.maxVarDecay)
+                .setLbLBDMinimizingClause(config.getLbLBDMinimizingClause())
+                .setLbLBDFrozenClause(config.getLbLBDFrozenClause())
+                .setLbSizeMinimizingClause(config.getLbSizeMinimizingClause())
+                .setFirstReduceDB(config.getFirstReduceDB())
+                .setSpecialIncReduceDB(config.getSpecialIncReduceDB())
+                .setIncReduceDB(config.getIncReduceDB())
+                .setFactorK(config.getFactorK())
+                .setFactorR(config.getFactorR())
+                .setSizeLBDQueue(config.getSizeLBDQueue())
+                .setSizeTrailQueue(config.getSizeTrailQueue())
+                .setReduceOnSize(config.isReduceOnSize())
+                .setReduceOnSizeSize(config.getReduceOnSizeSize())
+                .setMaxVarDecay(config.getMaxVarDecay())
                 .build();
     }
 
@@ -93,7 +95,7 @@ public interface SatSolverConfigs {
      * @param bin the protocol buffer
      * @return the configuration
      */
-    static GlucoseConfig deserialize(final PBGlucoseConfig bin) {
+    static GlucoseConfig deserializeGlucoseConfig(final PBGlucoseConfig bin) {
         return GlucoseConfig.builder()
                 .lbLBDMinimizingClause(bin.getLbLBDMinimizingClause())
                 .lbLBDFrozenClause(bin.getLbLBDFrozenClause())
@@ -116,7 +118,7 @@ public interface SatSolverConfigs {
      * @param minimization the algorithm
      * @return the protocol buffer
      */
-    static PBClauseMinimization serialize(final ClauseMinimization minimization) {
+    static PBClauseMinimization serializeMinMode(final ClauseMinimization minimization) {
         switch (minimization) {
             case NONE:
                 return PBClauseMinimization.NONE;
@@ -134,7 +136,7 @@ public interface SatSolverConfigs {
      * @param bin the protocol buffer
      * @return the algorithm
      */
-    static ClauseMinimization deserialize(final PBClauseMinimization bin) {
+    static ClauseMinimization deserializeMinMode(final PBClauseMinimization bin) {
         switch (bin) {
             case NONE:
                 return ClauseMinimization.NONE;
@@ -152,7 +154,7 @@ public interface SatSolverConfigs {
      * @param cnf the algorithm
      * @return the protocol buffer
      */
-    static PBCnfMethod serialize(final CNFMethod cnf) {
+    static PBCnfMethod serializeCnfMode(final CNFMethod cnf) {
         switch (cnf) {
             case FACTORY_CNF:
                 return PBCnfMethod.FACTORY_CNF;
@@ -170,7 +172,7 @@ public interface SatSolverConfigs {
      * @param bin the protocol buffer
      * @return the algorithm
      */
-    static CNFMethod deserialize(final PBCnfMethod bin) {
+    static CNFMethod deserializeCnfMode(final PBCnfMethod bin) {
         switch (bin) {
             case FACTORY_CNF:
                 return CNFMethod.FACTORY_CNF;

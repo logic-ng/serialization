@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 and MIT
 // Copyright 2023-20xx BooleWorks GmbH
 
-package org.logicng.formulas;
+package org.logicng.serialization;
 
 import static org.logicng.formulas.CType.EQ;
 import static org.logicng.formulas.CType.GE;
@@ -15,6 +15,17 @@ import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormulaType;
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBFormulas;
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBInternalFormula;
 import com.booleworks.logicng.formulas.ProtoBufFormulas.PBInternalPseudoBooleanConstraint;
+import org.logicng.formulas.And;
+import org.logicng.formulas.CType;
+import org.logicng.formulas.Equivalence;
+import org.logicng.formulas.FType;
+import org.logicng.formulas.Formula;
+import org.logicng.formulas.FormulaFactory;
+import org.logicng.formulas.Implication;
+import org.logicng.formulas.Literal;
+import org.logicng.formulas.Not;
+import org.logicng.formulas.Or;
+import org.logicng.formulas.PBConstraint;
 import org.logicng.functions.SubNodeFunction;
 import org.logicng.util.Pair;
 
@@ -51,9 +62,9 @@ public interface Formulas {
      * @param compress a flag whether the file should be compressed (zip)
      * @throws IOException if there is a problem writing the file
      */
-    static void serializeToFile(final Formula formula, final Path path, final boolean compress) throws IOException {
+    static void serializeFormulaToFile(final Formula formula, final Path path, final boolean compress) throws IOException {
         try (final OutputStream outputStream = compress ? new GZIPOutputStream(Files.newOutputStream(path)) : Files.newOutputStream(path)) {
-            serializeToStream(formula, outputStream);
+            serializeFormulaToStream(formula, outputStream);
         }
     }
 
@@ -65,9 +76,9 @@ public interface Formulas {
      * @return the formula
      * @throws IOException if there is a problem reading the file
      */
-    static Formula deserializeFromFile(final FormulaFactory f, final Path path, final boolean compress) throws IOException {
+    static Formula deserializeFormulaFromFile(final FormulaFactory f, final Path path, final boolean compress) throws IOException {
         try (final InputStream inputStream = compress ? new GZIPInputStream(Files.newInputStream(path)) : Files.newInputStream(path)) {
-            return deserializeFromStream(f, inputStream);
+            return deserializeFormulaFromStream(f, inputStream);
         }
     }
 
@@ -78,9 +89,9 @@ public interface Formulas {
      * @param compress a flag whether the file should be compressed (zip)
      * @throws IOException if there is a problem writing the file
      */
-    static void serializeListToFile(final List<Formula> formulas, final Path path, final boolean compress) throws IOException {
+    static void serializeFormulaListToFile(final List<Formula> formulas, final Path path, final boolean compress) throws IOException {
         try (final OutputStream outputStream = compress ? new GZIPOutputStream(Files.newOutputStream(path)) : Files.newOutputStream(path)) {
-            serializeListToStream(formulas, outputStream);
+            serializeFormulaListToStream(formulas, outputStream);
         }
     }
 
@@ -92,9 +103,9 @@ public interface Formulas {
      * @return the list of formulas
      * @throws IOException if there is a problem reading the file
      */
-    static List<Formula> deserializeListFromFile(final FormulaFactory f, final Path path, final boolean compress) throws IOException {
+    static List<Formula> deserializeFormulaListFromFile(final FormulaFactory f, final Path path, final boolean compress) throws IOException {
         try (final InputStream inputStream = compress ? new GZIPInputStream(Files.newInputStream(path)) : Files.newInputStream(path)) {
-            return deserializeListFromStream(f, inputStream);
+            return deserializeFormulaListFromStream(f, inputStream);
         }
     }
 
@@ -104,8 +115,8 @@ public interface Formulas {
      * @param stream  the stream
      * @throws IOException if there is a problem writing to the stream
      */
-    static void serializeToStream(final Formula formula, final OutputStream stream) throws IOException {
-        serialize(formula).writeTo(stream);
+    static void serializeFormulaToStream(final Formula formula, final OutputStream stream) throws IOException {
+        serializeFormula(formula).writeTo(stream);
     }
 
     /**
@@ -115,8 +126,8 @@ public interface Formulas {
      * @return the formula
      * @throws IOException if there is a problem reading from the stream
      */
-    static Formula deserializeFromStream(final FormulaFactory f, final InputStream stream) throws IOException {
-        return deserialize(f, PBFormulas.newBuilder().mergeFrom(stream).build());
+    static Formula deserializeFormulaFromStream(final FormulaFactory f, final InputStream stream) throws IOException {
+        return deserializeFormula(f, PBFormulas.newBuilder().mergeFrom(stream).build());
     }
 
     /**
@@ -125,8 +136,8 @@ public interface Formulas {
      * @param stream   the stream
      * @throws IOException if there is a problem writing to the stream
      */
-    static void serializeListToStream(final Collection<Formula> formulas, final OutputStream stream) throws IOException {
-        serialize(formulas).writeTo(stream);
+    static void serializeFormulaListToStream(final Collection<Formula> formulas, final OutputStream stream) throws IOException {
+        serializeFormulas(formulas).writeTo(stream);
     }
 
     /**
@@ -136,8 +147,8 @@ public interface Formulas {
      * @return the list of formulas
      * @throws IOException if there is a problem reading from the stream
      */
-    static List<Formula> deserializeListFromStream(final FormulaFactory f, final InputStream stream) throws IOException {
-        return deserializeList(f, PBFormulas.newBuilder().mergeFrom(stream).build());
+    static List<Formula> deserializeFormulaListFromStream(final FormulaFactory f, final InputStream stream) throws IOException {
+        return deserializeFormulaList(f, PBFormulas.newBuilder().mergeFrom(stream).build());
     }
 
     /**
@@ -145,8 +156,8 @@ public interface Formulas {
      * @param formula the formula
      * @return the protocol buffer
      */
-    static PBFormulas serialize(final Formula formula) {
-        return serialize(Collections.singletonList(formula));
+    static PBFormulas serializeFormula(final Formula formula) {
+        return serializeFormulas(Collections.singletonList(formula));
     }
 
     /**
@@ -154,23 +165,13 @@ public interface Formulas {
      * @param formulas the formulas
      * @return the protocol buffer
      */
-    static PBFormulas serialize(final Collection<Formula> formulas) {
+    static PBFormulas serializeFormulas(final Collection<Formula> formulas) {
         final Pair<Map<Formula, Integer>, Map<Integer, PBInternalFormula>> maps = computeMappings(formulas);
         final List<Integer> ids = formulas.stream().map(maps.first()::get).collect(Collectors.toList());
         return PBFormulas.newBuilder()
                 .addAllId(ids)
                 .setMapping(PBFormulaMapping.newBuilder().putAllMapping(maps.second()).build())
                 .build();
-    }
-
-    /**
-     * Computes the serialization mappings for a given formula.
-     * @param formula the formula
-     * @return a mapping from formula to ID and a mapping from ID to serialized formula (protocol buffer)
-     * for each sub-node of the formula.
-     */
-    static Pair<Map<Formula, Integer>, Map<Integer, PBInternalFormula>> computeMappings(final Formula formula) {
-        return computeMappings(Collections.singletonList(formula));
     }
 
     /**
@@ -252,7 +253,7 @@ public interface Formulas {
                 final PBConstraint pbc = (PBConstraint) formula;
                 final PBInternalPseudoBooleanConstraint.Builder pbBuilder = PBInternalPseudoBooleanConstraint.newBuilder();
                 pbBuilder.setRhs(pbc.rhs());
-                pbBuilder.setComparator(serialize(pbc.comparator()));
+                pbBuilder.setComparator(serializeCType(pbc.comparator()));
                 Arrays.stream(pbc.coefficients()).forEach(pbBuilder::addCoefficient);
                 Arrays.stream(pbc.operands()).forEach(it -> pbBuilder.addLiteral(it.toString()));
                 builder.setPbConstraint(pbBuilder.build());
@@ -267,8 +268,8 @@ public interface Formulas {
      * @param bin the protocol buffer
      * @return the formula
      */
-    static Formula deserialize(final FormulaFactory f, final PBFormulas bin) {
-        return deserializeList(f, bin).get(0);
+    static Formula deserializeFormula(final FormulaFactory f, final PBFormulas bin) {
+        return deserializeFormulaList(f, bin).get(0);
     }
 
     /**
@@ -277,8 +278,8 @@ public interface Formulas {
      * @param bin the protocol buffer
      * @return the list of formulas
      */
-    static List<Formula> deserializeList(final FormulaFactory f, final PBFormulas bin) {
-        final Map<Integer, Formula> id2formula = deserialize(f, bin.getMapping());
+    static List<Formula> deserializeFormulaList(final FormulaFactory f, final PBFormulas bin) {
+        final Map<Integer, Formula> id2formula = deserializeFormula(f, bin.getMapping());
         return bin.getIdList().stream().map(id2formula::get).collect(Collectors.toList());
     }
 
@@ -288,7 +289,7 @@ public interface Formulas {
      * @param bin the protocol buffer
      * @return the mapping from ID to formula
      */
-    static Map<Integer, Formula> deserialize(final FormulaFactory f, final PBFormulaMapping bin) {
+    static Map<Integer, Formula> deserializeFormula(final FormulaFactory f, final PBFormulaMapping bin) {
         final Map<Integer, Formula> id2formula = new TreeMap<>();
         bin.getMappingMap().forEach((k, v) -> {
             id2formula.put(k, deserialize(f, v, id2formula));
@@ -321,7 +322,7 @@ public interface Formulas {
                 return f.naryOperator(naryType, bin.getOperandList().stream().map(id2formula::get).collect(Collectors.toList()));
             case PBC:
                 final int rhs = (int) bin.getPbConstraint().getRhs();
-                final CType ctype = deserialize(bin.getPbConstraint().getComparator());
+                final CType ctype = deserializeCType(bin.getPbConstraint().getComparator());
                 final List<Literal> lits = bin.getPbConstraint().getLiteralList().stream()
                         .map(it -> it.startsWith(NOT_SYMBOL) ? f.literal(it.substring(1), false) : f.literal(it, true))
                         .collect(Collectors.toList());
@@ -342,7 +343,7 @@ public interface Formulas {
      * @param comparison the comparator
      * @return the protocol buffer
      */
-    static PBComparison serialize(final CType comparison) {
+    static PBComparison serializeCType(final CType comparison) {
         switch (comparison) {
             case EQ:
                 return PBComparison.EQ;
@@ -364,7 +365,7 @@ public interface Formulas {
      * @param bin the protocol buffer
      * @return the comparator
      */
-    static CType deserialize(final PBComparison bin) {
+    static CType deserializeCType(final PBComparison bin) {
         switch (bin) {
             case EQ:
                 return EQ;

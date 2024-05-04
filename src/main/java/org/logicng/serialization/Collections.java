@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0 and MIT
 // Copyright 2023-20xx BooleWorks GmbH
 
-package org.logicng.collections;
+package org.logicng.serialization;
 
 import com.booleworks.logicng.collections.ProtoBufCollections.PBBooleanVector;
 import com.booleworks.logicng.collections.ProtoBufCollections.PBIntVector;
 import com.booleworks.logicng.collections.ProtoBufCollections.PBIntVectorVector;
 import com.booleworks.logicng.collections.ProtoBufCollections.PBLongVector;
+import org.logicng.collections.LNGBooleanVector;
+import org.logicng.collections.LNGIntVector;
+import org.logicng.collections.LNGLongVector;
+import org.logicng.collections.LNGVector;
 
 /**
  * Serialization methods for LogicNG collections.
@@ -20,7 +24,7 @@ public interface Collections {
      * @param vec the Boolean vector
      * @return the protocol buffer
      */
-    static PBBooleanVector serialize(final LNGBooleanVector vec) {
+    static PBBooleanVector serializeBoolVec(final LNGBooleanVector vec) {
         final PBBooleanVector.Builder builder = PBBooleanVector.newBuilder().setSize(vec.size());
         for (int i = 0; i < vec.size(); i++) {
             builder.addElement(vec.get(i));
@@ -33,7 +37,7 @@ public interface Collections {
      * @param bin the protocol buffer
      * @return the Boolean vector
      */
-    static LNGBooleanVector deserialize(final PBBooleanVector bin) {
+    static LNGBooleanVector deserializeBooVec(final PBBooleanVector bin) {
         final boolean[] elements = new boolean[bin.getElementCount()];
         for (int i = 0; i < elements.length; i++) {
             elements[i] = bin.getElement(i);
@@ -46,23 +50,10 @@ public interface Collections {
      * @param vec the integer vector
      * @return the protocol buffer
      */
-    static PBIntVector serialize(final LNGIntVector vec) {
+    static PBIntVector serializeIntVec(final LNGIntVector vec) {
         final PBIntVector.Builder builder = PBIntVector.newBuilder().setSize(vec.size());
         for (int i = 0; i < vec.size(); i++) {
             builder.addElement(vec.get(i));
-        }
-        return builder.build();
-    }
-
-    /**
-     * Serializes a vector of integer vector to a protocol buffer.
-     * @param vec the vector of integer vectors
-     * @return the protocol buffer
-     */
-    static PBIntVectorVector serialize(final LNGVector<LNGIntVector> vec) {
-        final PBIntVectorVector.Builder builder = PBIntVectorVector.newBuilder().setSize(vec.size());
-        for (int i = 0; i < vec.size(); i++) {
-            builder.addElement(serialize(vec.get(i)));
         }
         return builder.build();
     }
@@ -72,7 +63,7 @@ public interface Collections {
      * @param bin the protocol buffer
      * @return the integer vector
      */
-    static LNGIntVector deserialize(final PBIntVector bin) {
+    static LNGIntVector deserializeIntVec(final PBIntVector bin) {
         final int[] elements = new int[bin.getElementCount()];
         for (int i = 0; i < elements.length; i++) {
             elements[i] = bin.getElement(i);
@@ -81,14 +72,27 @@ public interface Collections {
     }
 
     /**
+     * Serializes a vector of integer vector to a protocol buffer.
+     * @param vec the vector of integer vectors
+     * @return the protocol buffer
+     */
+    static PBIntVectorVector serializeVec(final LNGVector<LNGIntVector> vec) {
+        final PBIntVectorVector.Builder builder = PBIntVectorVector.newBuilder().setSize(vec.size());
+        for (int i = 0; i < vec.size(); i++) {
+            builder.addElement(serializeIntVec(vec.get(i)));
+        }
+        return builder.build();
+    }
+
+    /**
      * Deserializes a vector of integer vectors from a protocol buffer.
      * @param bin the protocol buffer
      * @return the vector of integer vectors
      */
-    static LNGVector<LNGIntVector> deserialize(final PBIntVectorVector bin) {
+    static LNGVector<LNGIntVector> deserializeVec(final PBIntVectorVector bin) {
         final LNGVector<LNGIntVector> vec = new LNGVector<>(bin.getSize());
         for (final PBIntVector i : bin.getElementList()) {
-            vec.push(deserialize(i));
+            vec.push(deserializeIntVec(i));
         }
         return vec;
     }
@@ -98,7 +102,7 @@ public interface Collections {
      * @param vec the long vector
      * @return the protocol buffer
      */
-    static PBLongVector serialize(final LNGLongVector vec) {
+    static PBLongVector serializeLongVec(final LNGLongVector vec) {
         final PBLongVector.Builder builder = PBLongVector.newBuilder().setSize(vec.size());
         for (int i = 0; i < vec.size(); i++) {
             builder.addElement(vec.get(i));
@@ -111,7 +115,7 @@ public interface Collections {
      * @param bin the protocol buffer
      * @return the long vector
      */
-    static LNGLongVector deserialize(final PBLongVector bin) {
+    static LNGLongVector deserializeLongVec(final PBLongVector bin) {
         final long[] elements = new long[bin.getElementCount()];
         for (int i = 0; i < elements.length; i++) {
             elements[i] = bin.getElement(i);
