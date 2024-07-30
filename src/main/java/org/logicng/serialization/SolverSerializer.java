@@ -69,11 +69,12 @@ public class SolverSerializer {
     }
 
     /**
-     * Generates a new solver serializer for a SAT solver which does not serialize proof information.
+     * Generates a new solver serializer for a SAT solver which does not serialize propositions
+     * of the proof information.
      * @param f the formula factory
      * @return the solver serializer
      */
-    public static SolverSerializer withoutProofs(final FormulaFactory f) {
+    public static SolverSerializer withoutPropositions(final FormulaFactory f) {
         return new SolverSerializer(f, null, null);
     }
 

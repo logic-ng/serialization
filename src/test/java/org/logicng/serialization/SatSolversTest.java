@@ -25,20 +25,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SatSolversTest {
 
     private static FormulaFactory f;
     private static SolverSerializer serializer;
-    private static Formula formula;
+    private static List<Formula> formula;
     private static Path tempFile;
 
     @BeforeAll
     public static void init() throws ParserException, IOException {
         f = new FormulaFactory();
-        serializer = SolverSerializer.withoutProofs(f);
+        serializer = SolverSerializer.withoutPropositions(f);
         tempFile = Files.createTempFile("temp", "pb");
-        formula = FormulaReader.readPseudoBooleanFormula(Paths.get("src/test/resources/large_formula.txt").toFile(), f);
+        final Formula whole = FormulaReader.readPseudoBooleanFormula(Paths.get("src/test/resources/large_formula.txt").toFile(), f);
+        formula = whole.stream().collect(Collectors.toList());
     }
 
     @AfterAll
@@ -52,7 +54,7 @@ public class SatSolversTest {
         final MiniSat solverBefore = MiniSat.miniSat(f);
         solverBefore.add(formula);
         serializer.serializeSolverToFile(solverBefore, tempFile, compress);
-        final MiniSat solverAfter = SolverSerializer.withoutProofs(new FormulaFactory()).deserializeMiniSatFromFile(tempFile, compress);
+        final MiniSat solverAfter = SolverSerializer.withoutPropositions(new FormulaFactory()).deserializeMiniSatFromFile(tempFile, compress);
         SolverComperator.compareSolverStates(solverBefore, solverAfter);
         compareSolverModels(solverBefore, solverAfter);
     }
@@ -63,7 +65,7 @@ public class SatSolversTest {
         final MiniSat solverBefore = MiniSat.miniCard(f);
         solverBefore.add(formula);
         serializer.serializeSolverToFile(solverBefore, tempFile, compress);
-        final MiniSat solverAfter = SolverSerializer.withoutProofs(new FormulaFactory()).deserializeMiniSatFromFile(tempFile, compress);
+        final MiniSat solverAfter = SolverSerializer.withoutPropositions(new FormulaFactory()).deserializeMiniSatFromFile(tempFile, compress);
         SolverComperator.compareSolverStates(solverBefore, solverAfter);
         compareSolverModels(solverBefore, solverAfter);
     }
@@ -74,7 +76,7 @@ public class SatSolversTest {
         final MiniSat solverBefore = MiniSat.glucose(f);
         solverBefore.add(formula);
         serializer.serializeSolverToFile(solverBefore, tempFile, compress);
-        final MiniSat solverAfter = SolverSerializer.withoutProofs(new FormulaFactory()).deserializeGlucoseFromFile(tempFile, compress);
+        final MiniSat solverAfter = SolverSerializer.withoutPropositions(new FormulaFactory()).deserializeGlucoseFromFile(tempFile, compress);
         SolverComperator.compareSolverStates(solverBefore, solverAfter);
         compareSolverModels(solverBefore, solverAfter);
     }
@@ -87,7 +89,7 @@ public class SatSolversTest {
         solverBefore.sat();
         serializer.serializeSolverToFile(solverBefore, tempFile, compress);
         final FormulaFactory ff = new FormulaFactory();
-        final MiniSat solverAfter = SolverSerializer.withoutProofs(ff).deserializeMiniSatFromFile(tempFile, compress);
+        final MiniSat solverAfter = SolverSerializer.withoutPropositions(ff).deserializeMiniSatFromFile(tempFile, compress);
         SolverComperator.compareSolverStates(solverBefore, solverAfter);
         compareSolverModels(solverBefore, solverAfter);
         solverBefore.add(f.variable("v3025").negate());
@@ -104,7 +106,7 @@ public class SatSolversTest {
         solverBefore.sat();
         serializer.serializeSolverToFile(solverBefore, tempFile, compress);
         final FormulaFactory ff = new FormulaFactory();
-        final MiniSat solverAfter = SolverSerializer.withoutProofs(ff).deserializeMiniSatFromFile(tempFile, compress);
+        final MiniSat solverAfter = SolverSerializer.withoutPropositions(ff).deserializeMiniSatFromFile(tempFile, compress);
         SolverComperator.compareSolverStates(solverBefore, solverAfter);
         compareSolverModels(solverBefore, solverAfter);
         solverBefore.add(f.variable("v3025").negate());
@@ -121,7 +123,7 @@ public class SatSolversTest {
         solverBefore.sat();
         serializer.serializeSolverToFile(solverBefore, tempFile, compress);
         final FormulaFactory ff = new FormulaFactory();
-        final MiniSat solverAfter = SolverSerializer.withoutProofs(ff).deserializeGlucoseFromFile(tempFile, compress);
+        final MiniSat solverAfter = SolverSerializer.withoutPropositions(ff).deserializeGlucoseFromFile(tempFile, compress);
         SolverComperator.compareSolverStates(solverBefore, solverAfter);
         compareSolverModels(solverBefore, solverAfter);
         solverBefore.add(f.variable("v3025").negate());
@@ -137,7 +139,7 @@ public class SatSolversTest {
         solverBefore.add(formula);
         serializer.serializeSolverToFile(solverBefore, tempFile, compress);
         final FormulaFactory ff = new FormulaFactory();
-        final MiniSat solverAfter = SolverSerializer.withoutProofs(ff).deserializeMiniSatFromFile(tempFile, compress);
+        final MiniSat solverAfter = SolverSerializer.withoutPropositions(ff).deserializeMiniSatFromFile(tempFile, compress);
         SolverComperator.compareSolverStates(solverBefore, solverAfter);
         final PropositionalParser p = new PropositionalParser(f);
         final PropositionalParser pp = new PropositionalParser(ff);
@@ -156,7 +158,7 @@ public class SatSolversTest {
         solverBefore.add(formula);
         serializer.serializeSolverToFile(solverBefore, tempFile, compress);
         final FormulaFactory ff = new FormulaFactory();
-        final MiniSat solverAfter = SolverSerializer.withoutProofs(ff).deserializeGlucoseFromFile(tempFile, compress);
+        final MiniSat solverAfter = SolverSerializer.withoutPropositions(ff).deserializeGlucoseFromFile(tempFile, compress);
         final PropositionalParser p = new PropositionalParser(f);
         final PropositionalParser pp = new PropositionalParser(ff);
         solverBefore.add(p.parse("v1668 & v1671"));
