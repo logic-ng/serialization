@@ -15,6 +15,8 @@ import org.logicng.io.parsers.PseudoBooleanParser;
 import org.logicng.util.FormulaRandomizer;
 import org.logicng.util.FormulaRandomizerConfig;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -95,12 +97,19 @@ public class FormulasTest {
     }
 
     @Test
-    public void testRandomizedFormulas() {
+    public void testRandomizedFormulas() throws IOException {
         final FormulaRandomizer randomizer = new FormulaRandomizer(this.f, FormulaRandomizerConfig.builder().seed(42).build());
         for (int i = 0; i < 1000; i++) {
             final Formula original = randomizer.formula(5);
             final PBFormulas serialized = Formulas.serializeFormula(original);
-            final Formula deserialized = Formulas.deserializeFormula(this.f, serialized);
+            Formula deserialized = Formulas.deserializeFormula(this.f, serialized);
+            assertThat(deserialized).isEqualTo(original);
+
+            final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            Formulas.serializeFormulaToStream(original, outputStream);
+            final byte[] byteArray = outputStream.toByteArray();
+            outputStream.close();
+            deserialized = Formulas.deserializeFormulaFromStream(this.f, new ByteArrayInputStream(byteArray));
             assertThat(deserialized).isEqualTo(original);
         }
     }
