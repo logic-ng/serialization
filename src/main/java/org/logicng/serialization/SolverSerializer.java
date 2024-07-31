@@ -403,8 +403,10 @@ public class SolverSerializer {
                 .build();
     }
 
-    MiniSat2Solver deserialize(final PBMiniSat2 bin) {
-        final MiniSat2Solver solver = new MiniSat2Solver(SatSolverConfigs.deserializeMiniSatConfig(bin.getCommon().getConfig()));
+    MiniSatStyleSolver deserialize(final PBMiniSat2 bin) {
+        final MiniSatStyleSolver solver = bin.getWrapper().getSolverStyle() == ProtoBufSatSolver.PBSolverStyle.MINISAT
+                ? new MiniSat2Solver(SatSolverConfigs.deserializeMiniSatConfig(bin.getCommon().getConfig()))
+                : new MiniCard(SatSolverConfigs.deserializeMiniSatConfig(bin.getCommon().getConfig()));
         deserializeCommon(bin.getCommon(), solver);
         setField(solver, "unitClauses", Collections.deserializeIntVec(bin.getUnitClauses()));
         return solver;
