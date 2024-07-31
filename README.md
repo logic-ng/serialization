@@ -1,3 +1,7 @@
+![License](https://img.shields.io/badge/license-Apache/MIT%202-ff69b4.svg) [![Maven Central](https://img.shields.io/maven-central/v/org.logicng/logicng-serialization.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22org.logicng%22%20AND%20a:%22logicng-serialization%22)
+
+<a href="https://www.logicng.org"><img src="https://github.com/logic-ng/LogicNG/blob/master/doc/logo/logo_big.png" alt="logo" width="300"></a>
+
 # LogicNG Serialization Library
 
 A small library which allows for the serialization of
