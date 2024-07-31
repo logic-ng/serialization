@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0 and MIT
+// Copyright 2023-20xx BooleWorks GmbH
+
 package org.logicng.serialization;
 
 import com.booleworks.logicng.knowledgecompilation.dnnf.ProtoBufDnnf.PBDnnf;
