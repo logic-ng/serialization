@@ -27,7 +27,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.logicng</groupId>
   <artifactId>logicng-serialization</artifactId>
-  <version>2.6.0</version>
+  <version>2.6.1</version>
   <packaging>bundle</packaging>
 
   <name>LogicNG Serialization</name>
@@ -68,21 +68,22 @@
     <maven.compiler.target>1.8</maven.compiler.target>
 
     <!-- Dependency Versions -->
-    <version.protobuf>4.27.1</version.protobuf>
-    <version.junit>5.10.2</version.junit>
-    <version.assertj>3.26.3</version.assertj>
+    <version.protobuf>4.35.0</version.protobuf>
+    <version.junit>5.14.4</version.junit>
+    <version.assertj>3.27.7</version.assertj>
 
     <!-- Plugin Versions -->
     <version.maven-helper-plugin>3.6.0</version.maven-helper-plugin>
-    <version.jacoco>0.8.12</version.jacoco>
-    <version.surefire>3.3.1</version.surefire>
+    <version.jacoco>0.8.14</version.jacoco>
+    <version.surefire>3.5.5</version.surefire>
     <version.nexus-staging>1.6.8</version.nexus-staging>
-    <version.maven-gpg>1.6</version.maven-gpg>
     <version.osgi-plugin>5.1.9</version.osgi-plugin>
-    <version.maven-compiler>3.12.1</version.maven-compiler>
-    <version.maven-source>3.3.0</version.maven-source>
-    <version.maven-javadoc>3.8.0</version.maven-javadoc>
-    <version.maven-jar>3.3.0</version.maven-jar>
+    <version.maven-compiler>3.15.0</version.maven-compiler>
+    <version.maven-source>3.4.0</version.maven-source>
+    <version.maven-javadoc>3.12.0</version.maven-javadoc>
+    <version.maven-jar>3.5.0</version.maven-jar>
+    <version.maven-gpg>3.2.8</version.maven-gpg>
+    <version.central-publishing>0.9.0</version.central-publishing>
   </properties>
 
   <build>
@@ -282,14 +283,12 @@
         <plugins>
           <!-- Deploy to Maven Central -->
           <plugin>
-            <groupId>org.sonatype.plugins</groupId>
-            <artifactId>nexus-staging-maven-plugin</artifactId>
-            <version>${version.nexus-staging}</version>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${version.central-publishing}</version>
             <extensions>true</extensions>
             <configuration>
-              <serverId>ossrh</serverId>
-              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-              <autoReleaseAfterClose>false</autoReleaseAfterClose>
+              <publishingServerId>central</publishingServerId>
             </configuration>
           </plugin>
 
