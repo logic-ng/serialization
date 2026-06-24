@@ -2,6 +2,11 @@
 
 LogicNG uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2] - 2026-06-24
+
+### Changed
+- Version update with main LogicNG
+
 ## [2.6.1] - 2026-05-21
 
 ### Changed
